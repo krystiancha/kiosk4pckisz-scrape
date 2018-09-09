@@ -33,7 +33,7 @@ class MovieShowScraper:
 
         return {
             'movies': movies,
-            'shows': shows,
+            'shows': sorted(shows, key=lambda show: show.start),
         }
 
     def movie_list_source(self) -> str:
@@ -58,7 +58,7 @@ class MovieShowScraper:
             try:
                 movie_stubs.append(self.movie_stub_from_list(a_tag, idx))
             except NoFutureShows:
-                break
+                continue
             except ScrapingException as e:
                 print(
                     'ScrapingException: movie {}: error_code {}'.format(e.movie_stub, str(e.error_code)),
@@ -68,7 +68,7 @@ class MovieShowScraper:
         return movie_stubs
 
     @staticmethod
-    def movie_stub_from_list(a_tag, idx, scrape_all=False   ) -> MovieStub:
+    def movie_stub_from_list(a_tag, idx, scrape_all=False) -> MovieStub:
         movie_stub = MovieStub(idx, a_tag.get('href'))
 
         if not movie_stub.link:
