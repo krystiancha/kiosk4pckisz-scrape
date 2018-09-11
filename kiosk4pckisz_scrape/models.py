@@ -1,5 +1,5 @@
 from datetime import timedelta, datetime
-from typing import List
+from typing import List, Tuple
 from uuid import UUID, uuid4
 
 
@@ -7,7 +7,7 @@ class MovieStub:
     index: int
     link: str
     title: str
-    showtimes: List[datetime]
+    showtimes: List[Tuple[datetime, int]]
 
     def __init__(self, index: int, link: str = None, title='', showtimes=None) -> None:
         if link is None:
@@ -21,6 +21,11 @@ class MovieStub:
 
     def __str__(self) -> str:
         return 'index: {}    title: {}    link: {}'.format(self.index or '?', self.title or '?', self.link or '?')
+
+    def __eq__(self, o: object) -> bool:
+        if type(o) == MovieStub:
+            return self.title == o.title
+        return super().__eq__(o)
 
 
 class Movie:
@@ -48,10 +53,12 @@ class Show:
     start: datetime
     premiere: bool
     end: datetime
+    theater: int
 
-    def __init__(self, movie: Movie, start: datetime, premiere: bool):
+    def __init__(self, movie: Movie, start: datetime, premiere: bool, theater: int):
         self.id = uuid4()
         self.movie = movie
         self.start = start
         self.premiere = premiere
         self.end = start + movie.duration
+        self.theater = theater

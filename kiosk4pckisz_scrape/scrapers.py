@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from re import search, I
 from sys import stderr
 from time import mktime, strptime
 from typing import List
@@ -26,7 +27,7 @@ class MovieShowScraper:
                 movie = self.movie_from_movie_stub(stub, self.movie_detail_source(stub))
                 movies.append(movie)
 
-                movie_shows = map(lambda showtime: Show(movie, showtime, False), stub.showtimes)
+                movie_shows = map(lambda showtime: Show(movie, showtime[0], False, showtime[1]), stub.showtimes)
                 shows += movie_shows
             except ScrapingException as e:
                 print(e)
@@ -56,7 +57,12 @@ class MovieShowScraper:
         movie_stubs: List[MovieStub] = []
         for idx, a_tag in enumerate(a_tags):
             try:
-                movie_stubs.append(self.movie_stub_from_list(a_tag, idx))
+                movie_stub = self.movie_stub_from_list(a_tag, idx)
+                try:
+                    idx = movie_stubs.index(movie_stub)
+                    movie_stubs[idx].showtimes += movie_stub.showtimes
+                except ValueError:
+                    movie_stubs.append(movie_stub)
             except NoFutureShows:
                 continue
             except ScrapingException as e:
@@ -68,8 +74,18 @@ class MovieShowScraper:
         return movie_stubs
 
     @staticmethod
+    def parse_title(title):
+        match = search(' *-? *(poranek)? *,? *ma[łl]e kino( *- *)?', title, I)
+        if match:
+            return title[:match.start()] + title[match.end():], 1
+        return title, 0
+
+    @staticmethod
     def movie_stub_from_list(a_tag, idx, scrape_all=False) -> MovieStub:
-        movie_stub = MovieStub(idx, a_tag.get('href'))
+        movie_stub = MovieStub(
+            index=idx,
+            link=a_tag.get('href'),
+        )
 
         if not movie_stub.link:
             raise ScrapingException(ScrapingException.ErrorCode.NO_LINK, movie_stub)
@@ -83,7 +99,7 @@ class MovieShowScraper:
             raise ScrapingException(ScrapingException.ErrorCode.NO_H3, movie_stub)
         if not title_h3.text:
             raise ScrapingException(ScrapingException.ErrorCode.NO_H3_TEXT, movie_stub)
-        movie_stub.title = title_h3.text
+        movie_stub.title, theater = MovieShowScraper.parse_title(title_h3.text)
 
         shows_span = details_div.find('span', class_='date')
         if not shows_span:
@@ -106,7 +122,7 @@ class MovieShowScraper:
                 except (OverflowError, ValueError):
                     raise ScrapingException(ScrapingException.ErrorCode.CANT_INTERPRET_TIME, movie_stub)
                 if showtime > datetime.now() or scrape_all:
-                    movie_stub.showtimes.append(showtime)
+                    movie_stub.showtimes.append((showtime, theater))
         if not movie_stub.showtimes and not scrape_all:
             raise NoFutureShows
 

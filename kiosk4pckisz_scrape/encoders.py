@@ -24,18 +24,6 @@ class MovieJSONEncoder(CustomJSONEncoder):
     attrs_str = ['id', 'duration']
 
 
-class ShowJSONEncoder(CustomJSONEncoder):
-    classes = [Show]
-    attrs_direct = []
-    attrs_str = ['id', 'start', 'end']
-
-    def default(self, o):
-        dict_ = super().default(o)
-        dict_.update({
-            'movie': dumps(o.movie, indent=2, ensure_ascii=False, cls=MovieJSONEncoder)
-        })
-
-
 class MovieShowTupleJSONEncoder(MovieJSONEncoder):
     classes = [Movie, Show]
 
@@ -47,6 +35,7 @@ class MovieShowTupleJSONEncoder(MovieJSONEncoder):
                 'id': str(o.id),
                 'start': str(o.start),
                 'end': str(o.end),
+                'theater': o.theater,
                 'movie': self.default(o.movie)
             }
         return JSONEncoder.default(self, o)
