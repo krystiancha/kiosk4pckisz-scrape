@@ -1,4 +1,4 @@
-from json import JSONEncoder, dumps
+from json import JSONEncoder
 
 from kiosk4pckisz_scrape.models import Movie, Show
 

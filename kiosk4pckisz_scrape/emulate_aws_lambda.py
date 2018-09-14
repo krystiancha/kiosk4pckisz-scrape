@@ -20,7 +20,8 @@ class CustomHTTPRequestHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         scraper = MovieShowScraper('http://127.0.0.1:8081', '/filmy,80')
-        body = dumps(scraper(), indent=2, sort_keys=True, cls=MovieShowTupleJSONEncoder, ensure_ascii=False).replace('http://127.0.0.1:8081', 'http://pckisz.pl')
+        body = dumps(scraper(), indent=2, sort_keys=True, cls=MovieShowTupleJSONEncoder, ensure_ascii=False).replace(
+            'http://127.0.0.1:8081', 'http://pckisz.pl')
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.send_header("Access-Control-Allow-Origin", "*")
