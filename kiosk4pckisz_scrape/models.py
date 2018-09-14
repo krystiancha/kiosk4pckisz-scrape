@@ -107,8 +107,8 @@ class Show:
         return {
             'id': self.idx,
             'movie': self.movie.to_dict(),
-            'start': self.start.isoformat(),
-            'end': self.end.isoformat(),
+            'start': self.start.strftime("%Y-%m-%d %H:%M:%S"),
+            'end': self.end.strftime("%Y-%m-%d %H:%M:%S"),
             'theater': self.theater,
             'premiere': False,
         }
@@ -118,7 +118,7 @@ class Show:
         return Show(
             idx=o['id'],
             movie=Movie.from_dict(o['movie']),
-            start=datetime.fromisoformat(o['start']),
+            start=datetime.strptime(o['start'], "%Y-%m-%d %H:%M:%S"),
             theater=o['theater'],
             premiere=o['premiere'],
         )
