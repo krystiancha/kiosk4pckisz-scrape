@@ -1,11 +1,10 @@
-from concurrent.futures import as_completed
-from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from re import search, I
 from sys import stderr
 from time import mktime, strptime
 from typing import List
 
+from boto3 import resource
 from bs4 import BeautifulSoup
 from requests import get
 
@@ -22,26 +21,43 @@ class MovieShowScraper:
         self.movie_list_path = movie_list_path
 
     def __call__(self):
+        dynamodb = resource('dynamodb')
+        meta_table = dynamodb.Table('kiosk4pckisz-meta')
+        response = meta_table.get_item(
+            Key={
+                'key': 'last_update'
+            }
+        )
+
+        try:
+            last_update = response['Item']
+        except KeyError:
+            data = self.scrape()
+            movies_table = dynamodb.Table('kiosk4pckisz-movies')
+
+            with movies_table.batch_writer() as batch:
+                for movie in data['movies']:
+                    batch.put_item(
+                        Item=movie.to_dict()
+                    )
+
+    def scrape(self):
         movies: List[Movie] = []
         shows: List[Show] = []
 
-        movie_stubs = self.merge_stubs(self.movie_stubs(self.movie_list_source()))
-        filtered_movie_stubs = filter(lambda stub: stub.showtimes, movie_stubs)
+        stubs = self.merge_stubs(self.movie_stubs(self.movie_list_source()))
+        stubs_with_shows = filter(lambda o: o.showtimes, stubs)
 
-        with ThreadPoolExecutor(max_workers=len(movie_stubs)) as executor:
-            future_to_stub = {executor.submit(self.movie_from_movie_stub, stub, self.movie_detail_source(stub)): stub
-                              for stub in filtered_movie_stubs}
-            for future in as_completed(future_to_stub):
-                movie = future.result()
-                stub = future_to_stub[future]
-                movies.append(movie)
-                movie_shows = map(lambda showtime: Show(movie, showtime[0], False, showtime[1]), stub.showtimes)
-                shows += movie_shows
+        for idx, stub in enumerate(stubs_with_shows):
+            movie = self.movie_from_movie_stub(stub, self.movie_detail_source(stub))
+            movie.idx = idx
+            movies.append(movie)
+            shows += map(lambda showtime: Show(movie=movie, start=showtime[0], theater=showtime[1]), stub.showtimes)
 
-        return {
-            'movies': movies,
-            'shows': sorted(shows, key=lambda show: show.start),
-        }
+        for idx, show in enumerate(shows):
+            show.idx = idx
+
+        return movies, shows
 
     def movie_list_source(self) -> str:
         r = get(self.base_url + self.movie_list_path)
@@ -62,12 +78,12 @@ class MovieShowScraper:
         if not a_tags:
             raise MovieListScrapingException('No movies found')
         for idx, a_tag in a_tags:
-            movie_stub = self.movie_stub_from_list(a_tag, idx)
-            movie_stubs.append(movie_stub)
+            movie_stubs.append(self.movie_stub_from_list(a_tag, idx))
 
         return movie_stubs
 
-    def merge_stubs(self, movie_stub: List[MovieStub]):
+    @staticmethod
+    def merge_stubs(movie_stub: List[MovieStub]):
         merged: List[MovieStub] = []
         for stub in movie_stub:
             try:
@@ -87,7 +103,7 @@ class MovieShowScraper:
 
     @staticmethod
     def movie_stub_from_list(a_tag, idx, scrape_all=False) -> MovieStub:
-        movie_stub = MovieStub(index=idx, link=a_tag.get('href'))
+        movie_stub = MovieStub(idx=idx, link=a_tag.get('href'))
 
         def print_warning(msg):
             print("WARNING for ({}) on movie list: {}".format(movie_stub, msg), file=stderr)
@@ -141,8 +157,8 @@ class MovieShowScraper:
         r = get(self.base_url + movie_stub.link)
         return r.content
 
-    def movie_from_movie_stub(self, movie_stub, source) -> Movie:
-        movie = Movie(movie_stub)
+    def movie_from_movie_stub(self, stub, source) -> Movie:
+        movie = Movie.from_stub(stub)
 
         def print_warning(msg):
             print("WARNING for ({}) on movie detail: {}".format(movie, msg), file=stderr)
