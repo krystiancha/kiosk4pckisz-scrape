@@ -52,7 +52,11 @@ class MovieShowScraper:
             movie = self.movie_from_movie_stub(stub, self.movie_detail_source(stub))
             movie.idx = idx
             movies.append(movie)
-            shows += map(lambda showtime: Show(movie=movie, start=showtime[0], theater=showtime[1]), stub.showtimes)
+
+            def stub_show_to_show(stub_show):
+                start, theater = stub_show
+                return Show(movie=movie, start=start, theater=theater)
+            shows += map(stub_show_to_show, stub.showtimes)
 
         for idx, show in enumerate(shows):
             show.idx = idx
