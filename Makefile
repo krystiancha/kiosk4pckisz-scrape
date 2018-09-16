@@ -6,4 +6,4 @@ all:
 	cp -r venv/lib/python3.7/site-packages/* tmp/
 	cd tmp && zip -r ../package.zip ./*
 	rm -rf tmp/
-	aws lambda update-function-code --function-name kiosk4pckisz-scrape-shows-ugEbA12BgP --zip-file fileb://package.zip
+	aws lambda update-function-code --function-name kiosk4pckisz-scrape --zip-file fileb://package.zip

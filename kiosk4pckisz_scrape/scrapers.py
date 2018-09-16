@@ -4,7 +4,6 @@ from sys import stderr
 from time import mktime, strptime
 from typing import List
 
-from boto3 import resource
 from bs4 import BeautifulSoup
 from requests import get
 
@@ -21,25 +20,7 @@ class MovieShowScraper:
         self.movie_list_path = movie_list_path
 
     def __call__(self):
-        dynamodb = resource('dynamodb')
-        meta_table = dynamodb.Table('kiosk4pckisz-meta')
-        response = meta_table.get_item(
-            Key={
-                'key': 'last_update'
-            }
-        )
-
-        try:
-            last_update = response['Item']
-        except KeyError:
-            data = self.scrape()
-            movies_table = dynamodb.Table('kiosk4pckisz-movies')
-
-            with movies_table.batch_writer() as batch:
-                for movie in data['movies']:
-                    batch.put_item(
-                        Item=movie.to_dict()
-                    )
+        return self.scrape()
 
     def scrape(self):
         movies: List[Movie] = []
@@ -56,6 +37,7 @@ class MovieShowScraper:
             def stub_show_to_show(stub_show):
                 start, theater = stub_show
                 return Show(movie=movie, start=start, theater=theater)
+
             shows += map(stub_show_to_show, stub.showtimes)
 
         for idx, show in enumerate(shows):
