@@ -13,6 +13,8 @@ def lambda_handler(event=None, context=None):
     scraper = MovieShowScraper(logger=logger)
     movies, shows = scraper.scrape()
 
+    logger.info('Scraped {} movies and {} shows'.format(len(movies), len(shows)))
+
     dynamodb = resource('dynamodb')
     meta_table = dynamodb.Table('kiosk4pckisz-meta')
     movies_table = dynamodb.Table('kiosk4pckisz-movies')
