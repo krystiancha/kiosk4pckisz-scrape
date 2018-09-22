@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from logging import Logger
 from re import search, I
 from sys import stderr
 from time import mktime, strptime
@@ -12,10 +13,12 @@ from kiosk4pckisz_scrape.models import MovieStub, Movie, Show
 
 
 class MovieShowScraper:
+    logger: Logger
     base_url: str
     movie_list_path: str
 
-    def __init__(self, base_url: str = 'http://pckisz.pl', movie_list_path: str = '/filmy,80') -> None:
+    def __init__(self, logger: Logger, base_url: str = 'http://pckisz.pl', movie_list_path: str = '/filmy,80') -> None:
+        self.logger = logger
         self.base_url = base_url
         self.movie_list_path = movie_list_path
 
@@ -87,12 +90,11 @@ class MovieShowScraper:
             return title[:match.start()] + title[match.end():], 1
         return title, 0
 
-    @staticmethod
-    def movie_stub_from_list(a_tag, idx, scrape_all=False) -> MovieStub:
+    def movie_stub_from_list(self, a_tag, idx, scrape_all=False) -> MovieStub:
         movie_stub = MovieStub(idx=idx, link=a_tag.get('href'))
 
         def print_warning(msg):
-            print("WARNING for ({}) on movie list: {}".format(movie_stub, msg), file=stderr)
+            self.logger.warning('{} @ movie list: {}'.format(movie_stub, msg))
 
         details_div = a_tag.find('div')
         if not details_div:
@@ -147,7 +149,7 @@ class MovieShowScraper:
         movie = Movie.from_stub(stub)
 
         def print_warning(msg):
-            print("WARNING for ({}) on movie detail: {}".format(movie, msg), file=stderr)
+            self.logger.warning('{} @ movie detail: {}'.format(movie, msg))
 
         soup = BeautifulSoup(source, 'html.parser')
 

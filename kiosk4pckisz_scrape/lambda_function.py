@@ -1,4 +1,5 @@
 from datetime import datetime
+from logging import getLogger, INFO
 
 from boto3 import resource
 
@@ -6,7 +7,10 @@ from kiosk4pckisz_scrape.scrapers import MovieShowScraper
 
 
 def lambda_handler(event=None, context=None):
-    scraper = MovieShowScraper()
+    logger = getLogger()
+    logger.setLevel(INFO)
+
+    scraper = MovieShowScraper(logger=logger)
     movies, shows = scraper.scrape()
 
     dynamodb = resource('dynamodb')
