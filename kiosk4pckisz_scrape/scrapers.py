@@ -176,10 +176,19 @@ class MovieShowScraper:
             print_warning("Element \".box-g-page span\" not found")
 
         movie.description = ''.join(map(lambda p_tag: p_tag.text, box_g_page.find_all('p'))).strip()
+        if not movie.description:
+            movie.description = ' '
+            print_warning("Description not found")
 
         movie.production = self.find_between(details.text, 'Produkcja:', '\r\n\t').strip()
+        if not movie.production:
+            movie.production = ' '
+            print_warning("Production not found")
 
         movie.genre = self.find_between(details.text, 'Gatunek:', ', Czas').strip()
+        if not movie.genre:
+            movie.genre = ' '
+            print_warning("Genre not found")
 
         try:
             movie.duration = timedelta(minutes=float(self.find_between(details.text, 'Czas:', 'min').strip()))
